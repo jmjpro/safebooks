@@ -1,6 +1,6 @@
 import type { Pool } from 'pg'
 import type { ExtractedFields, ExtractedItem } from '../extraction/field-extractor.js'
-import { mmDdYyyyToIso } from '../shared/date.js'
+import { EXTRACTED_FIELDS_COLUMNS, extractedFieldsValues } from './extracted-fields-row.js'
 
 export type SoStatus = 'processed' | 'needs_review'
 
@@ -17,23 +17,10 @@ export async function saveSo(pool: Pool, input: SaveSoInput): Promise<{ id: numb
     await client.query('BEGIN')
     const { rows } = await client.query(
       `INSERT INTO so (
-         customer, start_date, end_date, amount, payment_terms, billing_address,
-         customer_signature, burst, technical_account_manager, status, source_filename, processed_at
+         ${EXTRACTED_FIELDS_COLUMNS}, status, source_filename, processed_at
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now())
        RETURNING id`,
-      [
-        input.fields.customer ?? null,
-        input.fields.startDate != null ? mmDdYyyyToIso(input.fields.startDate) : null,
-        input.fields.endDate != null ? mmDdYyyyToIso(input.fields.endDate) : null,
-        input.fields.amount ?? null,
-        input.fields.paymentTerms ?? null,
-        input.fields.billingAddress ?? null,
-        input.fields.customerSignature ?? null,
-        input.fields.burst ?? null,
-        input.fields.technicalAccountManager ?? null,
-        input.status,
-        input.sourceFilename,
-      ],
+      [...extractedFieldsValues(input.fields), input.status, input.sourceFilename],
     )
     const soId = rows[0].id as number
 

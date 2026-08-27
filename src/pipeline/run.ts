@@ -4,11 +4,12 @@ import type { Pool } from 'pg'
 import type { FieldExtractor } from '../extraction/field-extractor.js'
 import { savePo } from '../persistence/po-repository.js'
 import { saveSo } from '../persistence/so-repository.js'
+import { saveUnclassified } from '../persistence/unclassified-repository.js'
 import { extractWithRetries } from './retry-extraction.js'
 
 export interface PipelineResult {
   filename: string
-  table: 'so' | 'po'
+  table: 'so' | 'po' | 'unclassified_documents'
   id: number
   status: 'processed' | 'needs_review'
 }
@@ -55,7 +56,13 @@ export async function runPipeline(
         })
         results.push({ filename, table: 'po', id, status })
       } else {
-        throw new Error(`Document type "${extraction.documentType}" is not yet supported`)
+        // Unclassifiable document: recorded (not dropped), never force-fit into so/po. See
+        // ADR 0006 and issue 05 (.scratch/document-extraction-pipeline/issues).
+        const { id } = await saveUnclassified(pool, {
+          fields: extraction.fields,
+          sourceFilename: filename,
+        })
+        results.push({ filename, table: 'unclassified_documents', id, status: 'needs_review' })
       }
     } catch (err) {
       failures.push({ filename, error: err instanceof Error ? err.message : String(err) })
