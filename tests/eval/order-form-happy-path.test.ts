@@ -8,6 +8,7 @@ import { Pool } from 'pg'
 import { migrate } from '../../src/db/migrate.js'
 import { AnthropicFieldExtractor } from '../../src/extraction/anthropic-field-extractor.js'
 import { runPipeline } from '../../src/pipeline/run.js'
+import { mmDdYyyyToIso } from '../../src/shared/date.js'
 import { ACME_ORDER_FORM } from './fixtures/acme-order-form.js'
 
 const databaseUrl = process.env.TEST_DATABASE_URL
@@ -40,8 +41,8 @@ test('Order Form happy path: ACME sample document -> so + so_items', async (t) =
   assert.ok(so.processed_at)
 
   assert.equal(so.customer, ACME_ORDER_FORM.customer)
-  assert.equal(so.start_date, ACME_ORDER_FORM.startDate)
-  assert.equal(so.end_date, ACME_ORDER_FORM.endDate)
+  assert.equal(so.start_date, mmDdYyyyToIso(ACME_ORDER_FORM.startDate))
+  assert.equal(so.end_date, mmDdYyyyToIso(ACME_ORDER_FORM.endDate))
   assert.equal(Number(so.amount), ACME_ORDER_FORM.amount)
   assert.equal(so.payment_terms, ACME_ORDER_FORM.paymentTerms)
   assert.equal(so.billing_address, ACME_ORDER_FORM.billingAddress)
