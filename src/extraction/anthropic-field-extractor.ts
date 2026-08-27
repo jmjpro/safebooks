@@ -66,6 +66,26 @@ function assign<K extends FieldName>(
   }
 }
 
+type OptionalFieldName = 'burst' | 'technicalAccountManager'
+
+// Burst and Technical Account Manager are Special Terms that only appear in a document's
+// Special Terms section when the contract actually grants them — unlike the other fields,
+// a document legitimately has neither. Treat null (or a blank string, which some models
+// emit instead of null despite the prompt) here as "not applicable", not a failure: no
+// fieldErrors entry, so a missing Special Terms section doesn't push the record to
+// needs_review. Restricted to the two Special Terms fields — this must never be used for
+// a required Structured Field, where an absent value should still block "processed" status.
+// See issue 03 (.scratch/document-extraction-pipeline/issues).
+function assignOptional<K extends OptionalFieldName>(
+  fields: Partial<ExtractedFields>,
+  name: K,
+  value: string | null,
+): void {
+  if (value !== null && value.trim() !== '') {
+    fields[name] = value
+  }
+}
+
 // See issue 01.5 (.scratch/document-extraction-pipeline/issues) for the model comparison
 // that settled on Haiku 4.5: it tied Opus 5 for field-level accuracy on the sample set
 // while being faster and ~5x cheaper.
@@ -110,6 +130,10 @@ export class AnthropicFieldExtractor implements FieldExtractor {
 
     const parsed = response.parsed_output
     if (!parsed) {
+      // Unlike a successful call reporting burst/technicalAccountManager as null (a confirmed
+      // "no Special Terms section", not a failure — see assignOptional below), a totally
+      // unparsable response means we have no signal on those fields at all. That's failure,
+      // not confirmed absence, so every field — including the two optional ones — is flagged.
       const reason = 'extraction did not return parsable output'
       return {
         documentType: 'Unclassified',
@@ -169,8 +193,8 @@ export class AnthropicFieldExtractor implements FieldExtractor {
     )
     assign(fields, fieldErrors, 'billingAddress', parsed.billingAddress)
     assign(fields, fieldErrors, 'customerSignature', parsed.customerSignature)
-    assign(fields, fieldErrors, 'burst', parsed.burst)
-    assign(fields, fieldErrors, 'technicalAccountManager', parsed.technicalAccountManager)
+    assignOptional(fields, 'burst', parsed.burst)
+    assignOptional(fields, 'technicalAccountManager', parsed.technicalAccountManager)
 
     return {
       documentType: parsed.documentType,
