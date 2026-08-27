@@ -4,6 +4,7 @@ import type { Pool } from 'pg'
 import type { FieldExtractor } from '../extraction/field-extractor.js'
 import { savePo } from '../persistence/po-repository.js'
 import { saveSo } from '../persistence/so-repository.js'
+import { extractWithRetries } from './retry-extraction.js'
 
 export interface PipelineResult {
   filename: string
@@ -34,7 +35,7 @@ export async function runPipeline(
   for (const filename of filenames) {
     try {
       const content = readFileSync(join(inputDir, filename))
-      const extraction = await extractor.extract({ filename, content })
+      const extraction = await extractWithRetries(extractor, { filename, content })
       const status = Object.keys(extraction.fieldErrors).length === 0 ? 'processed' : 'needs_review'
 
       if (extraction.documentType === 'OrderForm') {

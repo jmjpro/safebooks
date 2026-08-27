@@ -107,3 +107,20 @@ test('extract() flags every field, including burst and technicalAccountManager, 
     'extraction did not return parsable output',
   )
 })
+
+test('extract() resolves with every field flagged, rather than throwing, when the API call itself throws', async () => {
+  const client = {
+    messages: {
+      parse: async () => {
+        throw new Error('rate limited')
+      },
+    },
+  } as unknown as Anthropic
+
+  const result = await new AnthropicFieldExtractor(client).extract(document)
+
+  assert.deepEqual(result.fields, {})
+  assert.equal(result.documentType, 'Unclassified')
+  assert.equal(result.fieldErrors.customer, 'rate limited')
+  assert.equal(result.fieldErrors.burst, 'rate limited')
+})
