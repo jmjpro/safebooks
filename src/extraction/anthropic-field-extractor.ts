@@ -50,6 +50,28 @@ Then extract these fields:
 
 If a field's value truly cannot be found anywhere in the document, set it to null rather than guessing.`
 
+// Used both when the API call itself throws (network/rate-limit/5xx) and when it resolves
+// but returns unparsable output — in both cases we have zero signal on every field, so all
+// of them, including the two optional Special Terms fields, are flagged as failed.
+function totallyFailedResult(reason: string): FieldExtractionResult {
+  return {
+    documentType: 'Unclassified',
+    fields: {},
+    items: [],
+    fieldErrors: {
+      customer: reason,
+      startDate: reason,
+      endDate: reason,
+      amount: reason,
+      paymentTerms: reason,
+      billingAddress: reason,
+      customerSignature: reason,
+      burst: reason,
+      technicalAccountManager: reason,
+    },
+  }
+}
+
 function assign<K extends FieldName>(
   fields: Partial<ExtractedFields>,
   fieldErrors: Partial<Record<FieldName, string>>,
@@ -102,31 +124,41 @@ export class AnthropicFieldExtractor implements FieldExtractor {
   }
 
   async extract(document: Document): Promise<FieldExtractionResult> {
-    const response = await this.client.messages.parse({
-      model: this.model,
-      max_tokens: 16000,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: document.content.toString('base64'),
+    let response
+    try {
+      response = await this.client.messages.parse({
+        model: this.model,
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: document.content.toString('base64'),
+                },
               },
-            },
-            {
-              type: 'text',
-              text: `Extract the fields from this document (filename: ${document.filename}).`,
-            },
-          ],
-        },
-      ],
-      output_config: { format: zodOutputFormat(extractionResponseSchema) },
-    })
+              {
+                type: 'text',
+                text: `Extract the fields from this document (filename: ${document.filename}).`,
+              },
+            ],
+          },
+        ],
+        output_config: { format: zodOutputFormat(extractionResponseSchema) },
+      })
+    } catch (err) {
+      // The FieldExtractor port's contract is "always resolves with a result, never throws"
+      // — extractWithRetries (src/pipeline/retry-extraction.ts) relies on that to retry a
+      // failed field without special-casing exceptions. A transient API error (rate limit,
+      // 5xx, network blip) is therefore reported the same way as an unparsable response
+      // below, not thrown.
+      return totallyFailedResult(err instanceof Error ? err.message : String(err))
+    }
 
     const parsed = response.parsed_output
     if (!parsed) {
@@ -134,23 +166,7 @@ export class AnthropicFieldExtractor implements FieldExtractor {
       // "no Special Terms section", not a failure — see assignOptional below), a totally
       // unparsable response means we have no signal on those fields at all. That's failure,
       // not confirmed absence, so every field — including the two optional ones — is flagged.
-      const reason = 'extraction did not return parsable output'
-      return {
-        documentType: 'Unclassified',
-        fields: {},
-        items: [],
-        fieldErrors: {
-          customer: reason,
-          startDate: reason,
-          endDate: reason,
-          amount: reason,
-          paymentTerms: reason,
-          billingAddress: reason,
-          customerSignature: reason,
-          burst: reason,
-          technicalAccountManager: reason,
-        },
-      }
+      return totallyFailedResult('extraction did not return parsable output')
     }
 
     const fields: Partial<ExtractedFields> = {}
