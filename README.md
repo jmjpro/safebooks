@@ -7,9 +7,11 @@ content, extracts their fields via an LLM, and stores the results in Postgres as
 
 ## Setup
 
-Prerequisites: Node (version pinned in [.tool-versions](.tool-versions)), and Docker — via
-[colima](https://github.com/abiosoft/colima) (`colima start`) or Docker Desktop — for
-Postgres.
+Prerequisites:
+
+- **Node 24+** (tested with v24.20.0; see [.tool-versions](.tool-versions) if you use asdf).
+- **Docker**, for Postgres — via [colima](https://github.com/abiosoft/colima)
+  (`colima start`) or Docker Desktop.
 
 1. Install dependencies:
 
