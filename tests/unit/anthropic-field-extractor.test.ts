@@ -100,7 +100,7 @@ test('extract() flags every field, including burst and technicalAccountManager, 
   const result = await extractor.extract(document)
 
   assert.deepEqual(result.fields, {})
-  assert.equal(result.documentType, 'Unclassified')
+  assert.equal(result.documentType, 'ExtractionFailed')
   assert.equal(result.fieldErrors.burst, 'extraction did not return parsable output')
   assert.equal(
     result.fieldErrors.technicalAccountManager,
@@ -120,7 +120,7 @@ test('extract() resolves with every field flagged, rather than throwing, when th
   const result = await new AnthropicFieldExtractor(client).extract(document)
 
   assert.deepEqual(result.fields, {})
-  assert.equal(result.documentType, 'Unclassified')
+  assert.equal(result.documentType, 'ExtractionFailed')
   assert.equal(result.fieldErrors.customer, 'rate limited')
   assert.equal(result.fieldErrors.burst, 'rate limited')
 })

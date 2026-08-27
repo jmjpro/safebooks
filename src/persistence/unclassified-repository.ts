@@ -3,6 +3,9 @@ import type { ExtractedFields } from '../extraction/field-extractor.js'
 import { EXTRACTED_FIELDS_COLUMNS, extractedFieldsValues } from './extracted-fields-row.js'
 
 export interface SaveUnclassifiedInput {
+  // Which of the two ways a document ends up here — see the document_type column comment in
+  // schema.sql and issue 08 (.scratch/document-extraction-pipeline/issues).
+  documentType: 'Unclassified' | 'ExtractionFailed'
   fields: Partial<ExtractedFields>
   sourceFilename: string
 }
@@ -15,10 +18,10 @@ export async function saveUnclassified(
 ): Promise<{ id: number }> {
   const { rows } = await pool.query(
     `INSERT INTO unclassified_documents (
-       ${EXTRACTED_FIELDS_COLUMNS}, status, source_filename, processed_at
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'needs_review',$10, now())
+       document_type, ${EXTRACTED_FIELDS_COLUMNS}, status, source_filename, processed_at
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'needs_review',$11, now())
      RETURNING id`,
-    [...extractedFieldsValues(input.fields), input.sourceFilename],
+    [input.documentType, ...extractedFieldsValues(input.fields), input.sourceFilename],
   )
   return { id: rows[0].id as number }
 }
