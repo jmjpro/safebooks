@@ -10,6 +10,7 @@ import { AnthropicFieldExtractor } from '../../src/extraction/anthropic-field-ex
 import { runPipeline } from '../../src/pipeline/run.js'
 import { ACME_ORDER_FORM } from './fixtures/acme-order-form.js'
 import { BRIGHTOPS_PURCHASE_ORDER } from './fixtures/brightops-purchase-order.js'
+import { normalizeFreeText } from './normalize-free-text.js'
 
 const databaseUrl = process.env.TEST_DATABASE_URL
 if (!databaseUrl) {
@@ -25,16 +26,6 @@ async function resetTables(): Promise<void> {
 
 function stageSample(dir: string, sourceFilename: string, stagedFilename = sourceFilename): void {
   copyFileSync(join(process.cwd(), 'sample-input', sourceFilename), join(dir, stagedFilename))
-}
-
-// BrightOps' source document wraps its billing address across lines ("42 King George
-// Street" / "London, UK"); collapsing whitespace/commas before comparing treats that line
-// break the same as a comma, since free text formatting isn't part of what's being checked.
-function normalizeFreeText(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[\s,]+/g, ' ')
-    .trim()
 }
 
 test('Purchase Order happy path: BrightOps sample document -> po + po_items', async (t) => {

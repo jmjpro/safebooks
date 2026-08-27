@@ -13,6 +13,7 @@ import type {
 import { ACME_ORDER_FORM } from './fixtures/acme-order-form.js'
 import { BRIGHTOPS_PURCHASE_ORDER } from './fixtures/brightops-purchase-order.js'
 import { NOVAFLEET_PURCHASE_ORDER } from './fixtures/novafleet-purchase-order.js'
+import { normalizeFreeText } from './normalize-free-text.js'
 
 /**
  * Extraction-only model comparison for issue 01.5: runs FieldExtractor.extract()
@@ -100,17 +101,6 @@ function display(value: unknown): string {
 
 function checkExact(field: string, expected: unknown, actual: unknown): FieldCheck {
   return { field, pass: actual === expected, expected: display(expected), actual: display(actual) }
-}
-
-// Collapses whitespace/newlines/commas so "Street\nCity, ST" and "Street, City, ST" compare equal —
-// line breaks vs. commas are a formatting choice in free text, not an accuracy signal.
-function normalizeFreeText(value: unknown): unknown {
-  return typeof value === 'string'
-    ? value
-        .toLowerCase()
-        .replace(/[\s,]+/g, ' ')
-        .trim()
-    : value
 }
 
 function checkFreeText(field: string, expected: string, actual: string | undefined): FieldCheck {
