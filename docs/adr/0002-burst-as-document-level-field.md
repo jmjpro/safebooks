@@ -1,0 +1,3 @@
+# Burst modeled as a document-level field
+
+The assignment spec lists `Special terms | Burst` with the note "on the item level," which reads as an instruction to store it per line item. All four sample documents contradict that: Burst always appears as a single free-text bullet in a document-wide "Special Terms" section, never varying per item row. We modeled Burst as a field on `so`/`po` (document-level), matching the actual data, rather than adding a column to `so_items`/`po_items` that no sample document would ever populate differently across items. If real-world documents turn up where Burst genuinely varies by item, this should move down to the items tables.

@@ -1,0 +1,3 @@
+# Separate SO and PO tables instead of a unified schema
+
+The Order Form and Purchase Order field lists are identical, which would make a unified `documents` + `document_items` schema (with a `document_type` discriminator) the DRY choice. We went with the diagram's literal structure instead — separate `so`/`so_items` and `po`/`po_items` table pairs — because the assignment's technical overview explicitly draws it that way, and with exactly two document types the duplication cost is small. A future reader adding a third document type should weigh collapsing to a unified schema at that point, since the DRY case gets stronger with each additional type.
