@@ -66,7 +66,10 @@ function assign<K extends FieldName>(
   }
 }
 
-const DEFAULT_MODEL = 'claude-opus-5'
+// See issue 01.5 (.scratch/document-extraction-pipeline/issues) for the model comparison
+// that settled on Haiku 4.5: it tied Opus 5 for field-level accuracy on the sample set
+// while being faster and ~5x cheaper.
+export const DEFAULT_MODEL = 'claude-haiku-4-5'
 
 export class AnthropicFieldExtractor implements FieldExtractor {
   private readonly model: string

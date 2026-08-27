@@ -19,6 +19,7 @@
     "db:down": "scripts/db-down.sh",
     "pipeline": "node --env-file=.env --import tsx src/index.ts",
     "test": "node --env-file=.env --import tsx --test tests/*/*.test.ts",
+    "compare-models": "node --env-file=.env --import tsx tests/eval/model-comparison.ts",
     "lint": "eslint .",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
