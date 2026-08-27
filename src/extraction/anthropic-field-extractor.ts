@@ -66,12 +66,21 @@ function assign<K extends FieldName>(
   }
 }
 
+const DEFAULT_MODEL = 'claude-opus-5'
+
 export class AnthropicFieldExtractor implements FieldExtractor {
-  constructor(private readonly client: Anthropic) {}
+  private readonly model: string
+
+  constructor(
+    private readonly client: Anthropic,
+    model: string = process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL,
+  ) {
+    this.model = model
+  }
 
   async extract(document: Document): Promise<FieldExtractionResult> {
     const response = await this.client.messages.parse({
-      model: 'claude-opus-5',
+      model: this.model,
       max_tokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [
