@@ -11,10 +11,13 @@ import type {
   FieldExtractionResult,
 } from '../../src/extraction/field-extractor.js'
 import { ACME_ORDER_FORM } from './fixtures/acme-order-form.js'
+import { BRIGHTOPS_PURCHASE_ORDER } from './fixtures/brightops-purchase-order.js'
+import { NOVAFLEET_PURCHASE_ORDER } from './fixtures/novafleet-purchase-order.js'
+import { normalizeFreeText } from './normalize-free-text.js'
 
 /**
  * Extraction-only model comparison for issue 01.5: runs FieldExtractor.extract()
- * (no pipeline persistence — Purchase Order routing isn't built yet, per issue 02)
+ * (no pipeline persistence — this suite only exercises extraction, not SO/PO routing)
  * against all 4 sample documents and reports latency + field-level accuracy against
  * hand-verified expected values, for whichever model ANTHROPIC_MODEL selects.
  *
@@ -81,54 +84,8 @@ const EXPECTED: ExpectedDocument[] = [
       { productName: 'Premium Support', quantity: 1, price: 22916.67, totalAmount: 275000 },
     ],
   },
-  {
-    filename: 'Purchase Order – BrightOps Analytics Ltd.pdf',
-    documentType: 'PurchaseOrder',
-    customer: 'BrightOps Analytics Ltd.',
-    startDate: '03-01-2025',
-    endDate: '02-28-2027',
-    amount: 162000,
-    paymentTerms: 'Net 30',
-    billingAddress: '42 King George Street, London, UK',
-    customerSignature: true,
-    burstPattern: /10%/,
-    tamPattern: /Technical Account Manager/,
-    items: [
-      {
-        productName: 'Analytics Platform – Enterprise',
-        quantity: 1,
-        price: 72000,
-        totalAmount: 72000,
-      },
-      {
-        productName: 'Analytics Platform – Enterprise',
-        quantity: 1,
-        price: 78000,
-        totalAmount: 78000,
-      },
-      { productName: 'Premium Support', quantity: 1, price: 6000, totalAmount: 6000 },
-      { productName: 'Premium Support', quantity: 1, price: 6000, totalAmount: 6000 },
-    ],
-  },
-  {
-    filename: 'Purchase Order – NovaFleet Technologies Inc.pdf',
-    documentType: 'PurchaseOrder',
-    customer: 'NovaFleet Technologies Inc.',
-    startDate: '02-01-2025',
-    endDate: '01-31-2028',
-    amount: 451000,
-    paymentTerms: 'Net 45',
-    billingAddress: '900 Enterprise Drive, Toronto, ON M5G 2C3, Canada',
-    customerSignature: true,
-    burstPattern: /15%/,
-    tamPattern: /Technical Account Manager/,
-    items: [
-      { productName: 'Cloud Security Suite', quantity: 1, price: 120000, totalAmount: 120000 },
-      { productName: 'Cloud Security Suite', quantity: 1, price: 132000, totalAmount: 132000 },
-      { productName: 'Cloud Security Suite', quantity: 1, price: 145000, totalAmount: 145000 },
-      { productName: 'Advanced Threat Monitoring', quantity: 3, price: 18000, totalAmount: 54000 },
-    ],
-  },
+  { documentType: 'PurchaseOrder', ...BRIGHTOPS_PURCHASE_ORDER },
+  { documentType: 'PurchaseOrder', ...NOVAFLEET_PURCHASE_ORDER },
 ]
 
 interface FieldCheck {
@@ -144,17 +101,6 @@ function display(value: unknown): string {
 
 function checkExact(field: string, expected: unknown, actual: unknown): FieldCheck {
   return { field, pass: actual === expected, expected: display(expected), actual: display(actual) }
-}
-
-// Collapses whitespace/newlines/commas so "Street\nCity, ST" and "Street, City, ST" compare equal —
-// line breaks vs. commas are a formatting choice in free text, not an accuracy signal.
-function normalizeFreeText(value: unknown): unknown {
-  return typeof value === 'string'
-    ? value
-        .toLowerCase()
-        .replace(/[\s,]+/g, ' ')
-        .trim()
-    : value
 }
 
 function checkFreeText(field: string, expected: string, actual: string | undefined): FieldCheck {

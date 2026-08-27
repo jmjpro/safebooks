@@ -2,11 +2,12 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Pool } from 'pg'
 import type { FieldExtractor } from '../extraction/field-extractor.js'
+import { savePo } from '../persistence/po-repository.js'
 import { saveSo } from '../persistence/so-repository.js'
 
 export interface PipelineResult {
   filename: string
-  table: 'so'
+  table: 'so' | 'po'
   id: number
   status: 'processed' | 'needs_review'
 }
@@ -44,6 +45,14 @@ export async function runPipeline(
           sourceFilename: filename,
         })
         results.push({ filename, table: 'so', id, status })
+      } else if (extraction.documentType === 'PurchaseOrder') {
+        const { id } = await savePo(pool, {
+          fields: extraction.fields,
+          items: extraction.items,
+          status,
+          sourceFilename: filename,
+        })
+        results.push({ filename, table: 'po', id, status })
       } else {
         throw new Error(`Document type "${extraction.documentType}" is not yet supported`)
       }
