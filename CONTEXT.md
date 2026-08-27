@@ -42,7 +42,7 @@ A Special Term describing the customer's right to exceed contracted usage by a s
 A Special Term describing a dedicated account manager assigned for the contract term.
 
 **Item**:
-One line entry in a document's items table: product name, quantity, price, total amount.
+One line entry in a document's items table: product name, quantity, price, total amount. Sample documents' items tables also carry a per-row Start Date/End Date — often an annual sub-period of the document-level term with its own price — that isn't captured, a real (not redundant) information loss (see [ADR 0004](docs/adr/0004-item-level-dates-not-captured.md)).
 
 **needs_review status**:
 The outcome for a document where at least one field failed to extract or validate after retries. The record is still saved with whatever fields succeeded, flagged for manual follow-up, rather than the document being dropped.
