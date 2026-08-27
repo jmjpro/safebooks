@@ -1,5 +1,6 @@
 import type { Pool } from 'pg'
 import type { ExtractedFields, ExtractedItem } from '../extraction/field-extractor.js'
+import { mmDdYyyyToIso } from '../shared/date.js'
 
 export type SoStatus = 'processed' | 'needs_review'
 
@@ -22,8 +23,8 @@ export async function saveSo(pool: Pool, input: SaveSoInput): Promise<{ id: numb
        RETURNING id`,
       [
         input.fields.customer ?? null,
-        input.fields.startDate ?? null,
-        input.fields.endDate ?? null,
+        input.fields.startDate != null ? mmDdYyyyToIso(input.fields.startDate) : null,
+        input.fields.endDate != null ? mmDdYyyyToIso(input.fields.endDate) : null,
         input.fields.amount ?? null,
         input.fields.paymentTerms ?? null,
         input.fields.billingAddress ?? null,

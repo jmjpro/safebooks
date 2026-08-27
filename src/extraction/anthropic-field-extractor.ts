@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z } from 'zod'
+import { isValidMmDdYyyyDate } from '../shared/date.js'
 import type {
   Document,
   ExtractedFields,
@@ -9,7 +10,6 @@ import type {
   FieldName,
 } from './field-extractor.js'
 
-const MM_DD_YYYY = /^\d{2}-\d{2}-\d{4}$/
 const NET_TERMS = /^Net \d+$/
 
 const extractionResponseSchema = z.object({
@@ -138,8 +138,8 @@ export class AnthropicFieldExtractor implements FieldExtractor {
       fieldErrors,
       'startDate',
       parsed.startDate,
-      parsed.startDate !== null && !MM_DD_YYYY.test(parsed.startDate)
-        ? `"${parsed.startDate}" does not match mm-dd-yyyy`
+      parsed.startDate !== null && !isValidMmDdYyyyDate(parsed.startDate)
+        ? `"${parsed.startDate}" is not a valid mm-dd-yyyy calendar date`
         : null,
     )
     assign(
@@ -147,8 +147,8 @@ export class AnthropicFieldExtractor implements FieldExtractor {
       fieldErrors,
       'endDate',
       parsed.endDate,
-      parsed.endDate !== null && !MM_DD_YYYY.test(parsed.endDate)
-        ? `"${parsed.endDate}" does not match mm-dd-yyyy`
+      parsed.endDate !== null && !isValidMmDdYyyyDate(parsed.endDate)
+        ? `"${parsed.endDate}" is not a valid mm-dd-yyyy calendar date`
         : null,
     )
     assign(

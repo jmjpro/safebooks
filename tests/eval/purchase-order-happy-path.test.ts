@@ -8,6 +8,7 @@ import { Pool } from 'pg'
 import { migrate } from '../../src/db/migrate.js'
 import { AnthropicFieldExtractor } from '../../src/extraction/anthropic-field-extractor.js'
 import { runPipeline } from '../../src/pipeline/run.js'
+import { mmDdYyyyToIso } from '../../src/shared/date.js'
 import { ACME_ORDER_FORM } from './fixtures/acme-order-form.js'
 import { BRIGHTOPS_PURCHASE_ORDER } from './fixtures/brightops-purchase-order.js'
 import { normalizeFreeText } from './normalize-free-text.js'
@@ -50,8 +51,8 @@ test('Purchase Order happy path: BrightOps sample document -> po + po_items', as
   assert.ok(po.processed_at)
 
   assert.equal(po.customer, BRIGHTOPS_PURCHASE_ORDER.customer)
-  assert.equal(po.start_date, BRIGHTOPS_PURCHASE_ORDER.startDate)
-  assert.equal(po.end_date, BRIGHTOPS_PURCHASE_ORDER.endDate)
+  assert.equal(po.start_date, mmDdYyyyToIso(BRIGHTOPS_PURCHASE_ORDER.startDate))
+  assert.equal(po.end_date, mmDdYyyyToIso(BRIGHTOPS_PURCHASE_ORDER.endDate))
   assert.equal(Number(po.amount), BRIGHTOPS_PURCHASE_ORDER.amount)
   assert.equal(po.payment_terms, BRIGHTOPS_PURCHASE_ORDER.paymentTerms)
   assert.equal(
