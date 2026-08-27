@@ -20,7 +20,10 @@ A single PDF dropped in the input folder, classified by content — not filename
 _Avoid_: File (use Document when referring to a business document; File is fine for filesystem-level code)
 
 **Document Type**:
-The classification of a Document as Order Form (→ SO) or Purchase Order (→ PO), determined by the pipeline from document content.
+The classification of a Document as Order Form (→ SO), Purchase Order (→ PO), or Unclassified, determined by the pipeline from document content.
+
+**Unclassified**:
+The Document Type for a Document that's neither an Order Form nor a Purchase Order. Recorded in `unclassified_documents` rather than `so`/`po` (see [ADR 0006](docs/adr/0006-unclassified-documents-table.md)), always with `needs_review` status.
 
 **Customer**:
 The counterparty named in a document's billing fields (`Bill To` / `Buyer`), i.e. whoever the document is billed to. Distinct from the assignment spec's product-level use of "customer" (the business operating this system), which this build doesn't model.
