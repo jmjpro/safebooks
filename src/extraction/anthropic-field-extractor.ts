@@ -53,9 +53,14 @@ If a field's value truly cannot be found anywhere in the document, set it to nul
 // Used both when the API call itself throws (network/rate-limit/5xx) and when it resolves
 // but returns unparsable output — in both cases we have zero signal on every field, so all
 // of them, including the two optional Special Terms fields, are flagged as failed.
+//
+// documentType is 'ExtractionFailed', not 'Unclassified': we never got a usable read on this
+// document, so we can't say it's genuinely out-of-scope — that's a distinct outcome from the
+// LLM looking at the document and determining it's neither an Order Form nor a Purchase
+// Order. See issue 08 (.scratch/document-extraction-pipeline/issues).
 function totallyFailedResult(reason: string): FieldExtractionResult {
   return {
-    documentType: 'Unclassified',
+    documentType: 'ExtractionFailed',
     fields: {},
     items: [],
     fieldErrors: {

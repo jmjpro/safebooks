@@ -12,6 +12,9 @@ export interface PipelineResult {
   table: 'so' | 'po' | 'unclassified_documents'
   id: number
   status: 'processed' | 'needs_review'
+  // Set only for an 'unclassified_documents' row: which of the two ways it ended up there —
+  // see issue 08 (.scratch/document-extraction-pipeline/issues).
+  documentType?: 'Unclassified' | 'ExtractionFailed'
 }
 
 export interface PipelineFailure {
@@ -56,13 +59,21 @@ export async function runPipeline(
         })
         results.push({ filename, table: 'po', id, status })
       } else {
-        // Unclassifiable document: recorded (not dropped), never force-fit into so/po. See
-        // ADR 0006 and issue 05 (.scratch/document-extraction-pipeline/issues).
+        // Unclassifiable document (genuinely 'Unclassified' or a total 'ExtractionFailed'):
+        // recorded (not dropped), never force-fit into so/po. See ADR 0006 and issues 05 and
+        // 08 (.scratch/document-extraction-pipeline/issues).
         const { id } = await saveUnclassified(pool, {
+          documentType: extraction.documentType,
           fields: extraction.fields,
           sourceFilename: filename,
         })
-        results.push({ filename, table: 'unclassified_documents', id, status: 'needs_review' })
+        results.push({
+          filename,
+          table: 'unclassified_documents',
+          id,
+          status: 'needs_review',
+          documentType: extraction.documentType,
+        })
       }
     } catch (err) {
       failures.push({ filename, error: err instanceof Error ? err.message : String(err) })

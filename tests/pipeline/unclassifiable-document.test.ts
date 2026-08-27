@@ -36,6 +36,25 @@ function unclassified(): FieldExtractionResult {
   }
 }
 
+function extractionFailed(): FieldExtractionResult {
+  return {
+    documentType: 'ExtractionFailed',
+    fields: {},
+    items: [],
+    fieldErrors: {
+      customer: 'rate limited',
+      startDate: 'rate limited',
+      endDate: 'rate limited',
+      amount: 'rate limited',
+      paymentTerms: 'rate limited',
+      billingAddress: 'rate limited',
+      customerSignature: 'rate limited',
+      burst: 'rate limited',
+      technicalAccountManager: 'rate limited',
+    },
+  }
+}
+
 test('an unclassifiable document is persisted with needs_review status, not dropped', async (t) => {
   await resetTables()
   const inputDir = mkdtempSync(join(tmpdir(), 'safebooks-unclassified-'))
@@ -56,6 +75,35 @@ test('an unclassifiable document is persisted with needs_review status, not drop
   assert.equal(rows[0].status, 'needs_review')
   assert.equal(rows[0].source_filename, 'mystery.pdf')
   assert.equal(rows[0].customer, 'Some Company')
+  assert.equal(rows[0].document_type, 'Unclassified')
+})
+
+test('a document where every retry attempt fails outright is distinguished from a genuinely unclassified one', async (t) => {
+  await resetTables()
+  const inputDir = mkdtempSync(join(tmpdir(), 'safebooks-extraction-failed-'))
+  t.after(() => rmSync(inputDir, { recursive: true, force: true }))
+  stageDummyDocument(inputDir, 'unreadable.pdf')
+
+  const extractor = new ScriptedFieldExtractor([
+    extractionFailed(),
+    extractionFailed(),
+    extractionFailed(),
+  ])
+
+  const { results, failures } = await runPipeline(inputDir, extractor, pool)
+
+  assert.deepEqual(failures, [])
+  assert.equal(results.length, 1)
+  assert.equal(results[0]?.table, 'unclassified_documents')
+  assert.equal(results[0]?.status, 'needs_review')
+  assert.equal(results[0]?.documentType, 'ExtractionFailed')
+
+  const { rows } = await pool.query('SELECT * FROM unclassified_documents')
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].status, 'needs_review')
+  assert.equal(rows[0].source_filename, 'unreadable.pdf')
+  assert.equal(rows[0].document_type, 'ExtractionFailed')
+  assert.equal(rows[0].customer, null)
 })
 
 test('an unclassifiable document is not written to so or po', async (t) => {

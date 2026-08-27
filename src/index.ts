@@ -19,7 +19,10 @@ async function main(): Promise<void> {
     const { results, failures } = await runPipeline(inputDir, extractor, pool)
 
     for (const result of results) {
-      console.log(`${result.filename} -> ${result.table}#${result.id} (${result.status})`)
+      const detail = result.documentType
+        ? `${result.status}: ${result.documentType}`
+        : result.status
+      console.log(`${result.filename} -> ${result.table}#${result.id} (${detail})`)
     }
     for (const failure of failures) {
       console.error(`${failure.filename} -> failed: ${failure.error}`)

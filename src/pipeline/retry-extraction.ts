@@ -25,12 +25,19 @@ function copyField<K extends FieldName>(
 // is never overwritten by a later attempt.
 //
 // documentType/items aren't tracked per-field, so the same "don't clobber a good result"
-// rule is applied at the whole-result level: once an attempt has extracted at least one
-// field successfully, its documentType/items are trusted and kept across further retries —
-// an unrelated field still failing shouldn't let a later attempt's classification/item-list
-// variance (LLM non-determinism) overwrite already-good data. Only when an attempt extracted
-// nothing at all (e.g. a totally unparsable response) is there nothing worth protecting, so
-// the next attempt's documentType/items are taken instead.
+// rule is applied at the whole-result level: once an attempt has actually classified the
+// document, its documentType/items are trusted and kept across further retries — an
+// unrelated field still failing shouldn't let a later attempt's classification/item-list
+// variance (LLM non-determinism) overwrite already-good data. Only when an attempt is a total
+// 'ExtractionFailed' (the API call threw, or the response was unparsable — see
+// AnthropicFieldExtractor.totallyFailedResult) is there nothing worth protecting, so the next
+// attempt's documentType/items are taken instead.
+//
+// This must check documentType itself, not "previous.fields is empty": a genuine attempt can
+// legitimately classify the document while every individual field fails to extract (e.g. a
+// real but sparse/garbled document) — that classification is still real signal and must
+// survive a later attempt's total failure, not be silently overwritten by 'ExtractionFailed'.
+// See issue 08 (.scratch/document-extraction-pipeline/issues).
 function mergeRetry(
   previous: FieldExtractionResult,
   retry: FieldExtractionResult,
@@ -47,12 +54,12 @@ function mergeRetry(
     }
   }
 
-  const previousHadNoSuccessfulFields = Object.keys(previous.fields).length === 0
+  const previousWasTotalExtractionFailure = previous.documentType === 'ExtractionFailed'
 
   return {
-    documentType: previousHadNoSuccessfulFields ? retry.documentType : previous.documentType,
+    documentType: previousWasTotalExtractionFailure ? retry.documentType : previous.documentType,
     fields,
-    items: previousHadNoSuccessfulFields ? retry.items : previous.items,
+    items: previousWasTotalExtractionFailure ? retry.items : previous.items,
     fieldErrors,
   }
 }

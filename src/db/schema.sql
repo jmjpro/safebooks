@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS po_items (
 -- "processed" regardless of whether its individual fields happened to extract cleanly.
 CREATE TABLE IF NOT EXISTS unclassified_documents (
   id SERIAL PRIMARY KEY,
+  -- 'Unclassified': the extractor got a usable read and determined the document is genuinely
+  -- neither an Order Form nor a Purchase Order. 'ExtractionFailed': every retry attempt
+  -- errored or returned unparsable output, so there's no signal on the document at all — a
+  -- distinct outcome that shouldn't look the same as a confirmed out-of-scope document to an
+  -- operator reviewing this table. See issue 08 (.scratch/document-extraction-pipeline/issues).
+  document_type TEXT NOT NULL,
   customer TEXT,
   start_date DATE,
   end_date DATE,
@@ -74,6 +80,11 @@ CREATE TABLE IF NOT EXISTS unclassified_documents (
   processed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Migration for databases created before issue 08: backfill pre-existing rows as
+-- 'Unclassified', the only value ever stored before this column existed. A no-op once the
+-- column is already present.
+ALTER TABLE unclassified_documents ADD COLUMN IF NOT EXISTS document_type TEXT NOT NULL DEFAULT 'Unclassified';
 
 -- Migration for databases created before ADR 0005: CREATE TABLE IF NOT EXISTS above won't
 -- retype so/po's start_date/end_date on a table that already exists, so retype them here.

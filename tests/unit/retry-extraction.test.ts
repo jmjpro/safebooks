@@ -123,10 +123,10 @@ test('documentType and items from a successful first attempt are kept even when 
   assert.equal(extraction.fields.amount, 42)
 })
 
-test('documentType and items are taken from a later attempt when the first attempt extracted nothing at all', async () => {
+test('documentType and items are taken from a later attempt when the first attempt was a total extraction failure', async () => {
   const items = [{ productName: 'Widget', quantity: 1, price: 10, totalAmount: 10 }]
   const totallyFailed = result({
-    documentType: 'Unclassified',
+    documentType: 'ExtractionFailed',
     items: [],
     fields: {},
     fieldErrors: { customer: 'unparsable', amount: 'unparsable' },
@@ -145,4 +145,25 @@ test('documentType and items are taken from a later attempt when the first attem
 
   assert.equal(extraction.documentType, 'OrderForm')
   assert.deepEqual(extraction.items, items)
+})
+
+test('a genuine classification with zero successfully-extracted fields is not overwritten by a later total extraction failure', async () => {
+  const extractor = new ScriptedFieldExtractor([
+    result({
+      documentType: 'OrderForm',
+      items: [],
+      fields: {},
+      fieldErrors: { customer: 'not found in document', amount: 'not found in document' },
+    }),
+    result({
+      documentType: 'ExtractionFailed',
+      items: [],
+      fields: {},
+      fieldErrors: { customer: 'rate limited', amount: 'rate limited' },
+    }),
+  ])
+
+  const extraction = await extractWithRetries(extractor, document)
+
+  assert.equal(extraction.documentType, 'OrderForm')
 })
