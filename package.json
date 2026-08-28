@@ -17,12 +17,12 @@
   "scripts": {
     "db:up": "scripts/db-up.sh",
     "db:down": "scripts/db-down.sh",
-    "pipeline": "node --env-file=.env --import tsx src/index.ts",
+    "pipeline": "node --import tsx src/index.ts",
     "test": "npm run test:unit && npm run test:pipeline && npm run test:eval",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
-    "test:pipeline": "node --env-file=.env --import tsx --test --test-concurrency=1 tests/pipeline/*.test.ts",
-    "test:eval": "node --env-file=.env --import tsx --test --test-concurrency=1 tests/eval/*.test.ts",
-    "compare-models": "node --env-file=.env --import tsx tests/eval/model-comparison.ts",
+    "test:pipeline": "node --import dotenv/config --import tsx --test --test-concurrency=1 tests/pipeline/*.test.ts",
+    "test:eval": "node --import dotenv/config --import tsx --test --test-concurrency=1 tests/eval/*.test.ts",
+    "compare-models": "node --import tsx tests/eval/model-comparison.ts",
     "lint": "eslint .",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.121.0",
+    "@visulima/tabular": "^4.1.0",
+    "dotenv": "^17.4.2",
     "pg": "^8.23.0",
     "zod": "^4.4.3"
   }

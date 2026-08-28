@@ -53,7 +53,22 @@ npm run pipeline [inputDir]
 
 `inputDir` defaults to `sample-input/`, which contains the 4 sample documents (2 Order Form
 customers, 2 Purchase Order customers). Each `.pdf` in the folder is classified, its fields
-extracted, and the result written to Postgres. The command prints one line per document:
+extracted, and the result written to Postgres.
+
+A full run takes tens of seconds (each document is 1-3 real LLM calls), so the command prints
+progress as it goes rather than staying silent until the end:
+
+```
+Starting pipeline (input: sample-input)
+Found 4 document(s) in sample-input
+Processing ACME Order From.pdf
+Querying LLM for ACME Order From.pdf (attempt 1/3)
+Processing CloudShield Order Form.pdf
+Querying LLM for CloudShield Order Form.pdf (attempt 1/3)
+...
+```
+
+followed by one summary line per document once it's fully processed:
 
 ```
 ACME Order From.pdf -> so#1 (processed)
@@ -67,6 +82,21 @@ An Order Form document is stored in `so`/`so_items`; a Purchase Order document i
 `unclassified_documents` (see [ADR 0006](docs/adr/0006-unclassified-documents-table.md)).
 Re-running the command against the same folder reprocesses every document in it again,
 inserting new rows rather than updating existing ones.
+
+After the summary lines, the command prints the rows it just persisted for each table
+touched in that run (`so`, `so_items`, `po`, `po_items`, `unclassified_documents`), so you can
+see the extracted data — including the full Special Terms prose — without a separate `psql`
+query. `so`/`po`/`unclassified_documents` print as an expanded `field: value` block per row
+(like `psql`'s `\x` display — they have 13-14 columns, too many for one wide table to stay
+readable); `so_items`/`po_items` print as a normal wide table (product/qty/price side by
+side) — only 6 narrow columns, so a table reads better than 6 separate blocks per item.
+
+While iterating on that display formatting itself, `tests/support/preview-persisted-rows.ts`
+re-prints whatever's already in the dev DB without re-running the pipeline (no LLM call):
+
+```
+node --import tsx tests/support/preview-persisted-rows.ts
+```
 
 To inspect the results directly in Postgres:
 
@@ -128,7 +158,7 @@ runs three suites in order:
   the other two.
 
 `test:pipeline` and `test:eval` require Postgres running (`npm run db:up`) and `.env`
-configured, since they're invoked with `--env-file=.env` and read `TEST_DATABASE_URL`.
+configured, since they're invoked with `--import dotenv/config` and read `TEST_DATABASE_URL`.
 `test:unit` needs neither.
 
 ## Other scripts
