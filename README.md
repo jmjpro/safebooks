@@ -48,34 +48,47 @@ migration step is needed.
 Run the pipeline against a folder of documents:
 
 ```
-npm run pipeline [inputDir]
+npm run pipeline [inputDir] [--concurrency=N]
 ```
 
 `inputDir` defaults to `sample-input/`, which contains the 4 sample documents (2 Order Form
 customers, 2 Purchase Order customers). Each `.pdf` in the folder is classified, its fields
-extracted, and the result written to Postgres.
+extracted, and the result written to Postgres. Files are processed concurrently, up to
+`--concurrency` (or the `PIPELINE_CONCURRENCY` env var; default 5) at a time — each file's own
+steps (read → LLM → DB) still run in order, only different files overlap.
 
-A full run takes tens of seconds (each document is 1-3 real LLM calls), so the command prints
-progress as it goes rather than staying silent until the end:
-
-```
-Starting pipeline (input: sample-input)
-Found 4 document(s) in sample-input
-Processing ACME Order From.pdf
-Querying LLM for ACME Order From.pdf (attempt 1/3)
-Processing CloudShield Order Form.pdf
-Querying LLM for CloudShield Order Form.pdf (attempt 1/3)
-...
-```
-
-followed by one summary line per document once it's fully processed:
+While the run is in progress, a fixed grid tracks every file's `READ`/`LLM`/`DB` stage in
+place — a dot while queued, a spinner (with a live retry counter on `LLM`) while running, then
+a check, a warning (`LLM` only, for `needs_review`/`Unclassified` outcomes), or an x once that
+stage settles:
 
 ```
-ACME Order From.pdf -> so#1 (processed)
-CloudShield Order Form.pdf -> so#2 (processed)
-Purchase Order – BrightOps Analytics Ltd.pdf -> po#1 (processed)
-Purchase Order – NovaFleet Technologies Inc.pdf -> po#2 (processed)
+FILE                                        READ  LLM   DB
+ACME Order From.pdf                         ✔     ✔     ✔
+CloudShield Order Form.pdf                  ✔     ⠹ 2/3 ·
+Purchase Order – BrightOps Analytics.pdf    ✔     ⚠     ✔
+Purchase Order – NovaFleet Technologies.pdf ✔     ✔     ⠋
 ```
+
+When stdout isn't a real terminal (piped output, CI logs), the grid falls back to one flat
+line per stage transition instead, since in-place redraw only works on a real TTY. While
+iterating on the grid itself, `tests/support/preview-live-progress.ts` exercises every visual
+state (processed, needs_review, Unclassified, ExtractionFailed, an unreadable file) against a
+stub extractor and the test DB, with artificial delays instead of real LLM calls:
+
+```
+node --import dotenv/config --import tsx tests/support/preview-live-progress.ts
+```
+
+A file that failed outright (couldn't be read, or hit a DB error) also gets its error message
+printed once the run finishes — the grid's `x` shows _which_ stage failed, but not why, and a
+failed file gets no row in the recap below to explain itself either. A file that succeeded
+doesn't get its own separate summary line: the grid already shows its filename and final
+per-stage status, and the recap below shows each row's own `#id` and `source_filename`, so a
+third "-> table#id" line would just repeat both.
+
+The command exits non-zero if any file failed outright — an `ExtractionFailed`/`Unclassified`
+document is still a _successful_ pipeline run and doesn't count.
 
 An Order Form document is stored in `so`/`so_items`; a Purchase Order document is stored in
 `po`/`po_items`; a document that can't be classified as either is stored in
@@ -83,7 +96,7 @@ An Order Form document is stored in `so`/`so_items`; a Purchase Order document i
 Re-running the command against the same folder reprocesses every document in it again,
 inserting new rows rather than updating existing ones.
 
-After the summary lines, the command prints the rows it just persisted for each table
+Once the run finishes, the command prints the rows it just persisted for each table
 touched in that run (`so`, `so_items`, `po`, `po_items`, `unclassified_documents`), so you can
 see the extracted data — including the full Special Terms prose — without a separate `psql`
 query. `so`/`po`/`unclassified_documents` print as an expanded `field: value` block per row
