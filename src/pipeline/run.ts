@@ -5,7 +5,7 @@ import type { FieldExtractor } from '../extraction/field-extractor.js'
 import { savePo } from '../persistence/po-repository.js'
 import { saveSo } from '../persistence/so-repository.js'
 import { saveUnclassified } from '../persistence/unclassified-repository.js'
-import { extractWithRetries } from './retry-extraction.js'
+import { extractWithRetries, MAX_EXTRACTION_ATTEMPTS } from './retry-extraction.js'
 
 export interface PipelineResult {
   filename: string
@@ -31,15 +31,23 @@ export async function runPipeline(
   inputDir: string,
   extractor: FieldExtractor,
   pool: Pool,
+  onProgress?: (message: string) => void,
 ): Promise<PipelineRunSummary> {
   const filenames = readdirSync(inputDir).filter((f) => f.toLowerCase().endsWith('.pdf'))
+  onProgress?.(`Found ${filenames.length} document(s) in ${inputDir}`)
   const results: PipelineResult[] = []
   const failures: PipelineFailure[] = []
 
   for (const filename of filenames) {
     try {
+      onProgress?.(`Processing ${filename}`)
       const content = readFileSync(join(inputDir, filename))
-      const extraction = await extractWithRetries(extractor, { filename, content })
+      const extraction = await extractWithRetries(
+        extractor,
+        { filename, content },
+        MAX_EXTRACTION_ATTEMPTS,
+        onProgress,
+      )
       const status = Object.keys(extraction.fieldErrors).length === 0 ? 'processed' : 'needs_review'
 
       if (extraction.documentType === 'OrderForm') {
