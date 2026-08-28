@@ -68,9 +68,9 @@ export async function extractWithRetries(
   extractor: FieldExtractor,
   document: Document,
   maxAttempts: number = MAX_EXTRACTION_ATTEMPTS,
-  onProgress?: (message: string) => void,
+  onAttempt?: (attempt: number, maxAttempts: number) => void,
 ): Promise<FieldExtractionResult> {
-  onProgress?.(`Querying LLM for ${document.filename} (attempt 1/${maxAttempts})`)
+  onAttempt?.(1, maxAttempts)
   let result = await extractor.extract(document)
 
   for (
@@ -78,7 +78,7 @@ export async function extractWithRetries(
     attempt <= maxAttempts && Object.keys(result.fieldErrors).length > 0;
     attempt++
   ) {
-    onProgress?.(`Retrying ${document.filename} (attempt ${attempt}/${maxAttempts})`)
+    onAttempt?.(attempt, maxAttempts)
     const retry = await extractor.extract(document)
     result = mergeRetry(result, retry)
   }
